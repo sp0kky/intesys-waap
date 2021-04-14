@@ -199,7 +199,12 @@ RUN apk add --no-cache --virtual .build-deps \
     && mkdir -p /var/run/openresty \
     && ln -sf /dev/stdout /usr/local/openresty/nginx/logs/access.log \
     && ln -sf /dev/stderr /usr/local/openresty/nginx/logs/error.log \
-    && wget --quiet https://raw.githubusercontent.com/SpiderLabs/ModSecurity/v3/master/unicode.mapping -O /usr/local/openresty/nginx/conf/unicode.mapping
+    && wget --quiet https://raw.githubusercontent.com/SpiderLabs/ModSecurity/v3/master/unicode.mapping -O /usr/local/openresty/nginx/conf/unicode.mapping \
+    && git clone https://github.com/coreruleset/coreruleset.git /usr/local/openresty/nginx/conf/crs \
+    && mv /usr/local/openresty/nginx/conf/crs/crs-setup.conf.example /usr/local/openresty/nginx/conf/crs/crs-setup.conf \
+    && echo 'SecDefaultAction "phase:1,log,auditlog,deny,status:503"' >> /usr/local/openresty/nginx/conf/crs/crs-setup.conf \
+    && echo 'SecDefaultAction "phase:2,log,auditlog,deny,status:503"' >> /usr/local/openresty/nginx/conf/crs/crs-setup.conf \
+    && echo 'SecAction "id:900000, phase:1, nolog, pass, t:none, setvar:tx.paranoia_level=2"' >> /usr/local/openresty/nginx/conf/crs/crs-setup.conf
 
 # Add additional binaries into PATH for convenience
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
