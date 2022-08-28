@@ -14,7 +14,7 @@ ARG RESTY_IMAGE_TAG="3.15"
 ARG RESTY_VERSION="1.21.4.1"
 ARG RESTY_NGINX="1.21.4"
 ARG RESTY_LUAJIT_LIB="/usr/local/openresty/luajit/lib"
-ARG RESTY_LUAJIT_INC="/bin/ls -1 ../ |grep LuaJIT"
+#ARG RESTY_LUAJIT_INC="/bin/ls -1 ../ |grep LuaJIT"
 ARG RESTY_OPENSSL_VERSION="openssl version"
 
 ARG RESTY_ADD_PACKAGE_BUILDDEPS=""
@@ -93,37 +93,40 @@ RUN apk add --no-cache --virtual .build-deps \
         zlib \
         pcre \
         openssl \
-        ${RESTY_ADD_PACKAGE_RUNDEPS} \
-    && git clone https://github.com/SpiderLabs/ModSecurity /tmp/modsecurity \
+        ${RESTY_ADD_PACKAGE_RUNDEPS}
+RUN git clone https://github.com/SpiderLabs/ModSecurity /tmp/modsecurity \
     && cd /tmp/modsecurity \
     && ./build.sh \
     && git submodule init \
     && git submodule update \
     && ./configure \
     && make \
-    && make install \
-    && cd /tmp \
+    && make install
+RUN cd /tmp \
     && git clone https://github.com/SpiderLabs/ModSecurity-nginx.git /tmp/modsecurity-nginx \
     && cd /tmp \
-    && if [ -n "${RESTY_EVAL_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_PRE_CONFIGURE}); fi \
-    && cd /tmp \
+    && if [ -n "${RESTY_EVAL_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_PRE_CONFIGURE}); fi
+RUN cd /tmp \
     && wget 'http://openresty.org/package/admin@openresty.com-5ea678a6.rsa.pub' \
     && mv 'admin@openresty.com-5ea678a6.rsa.pub' /etc/apk/keys/ \
     && echo "http://openresty.org/package/alpine/v$RESTY_IMAGE_TAG/main" | tee -a /etc/apk/repositories \
     && apk update \ 
-    && apk add openresty=${RESTY_VERSION}-r0 \
+    && apk add openresty=${RESTY_VERSION}-r0
+RUN cd /tmp \
     && curl -fkSL https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
     && tar xzf openresty-${RESTY_VERSION}.tar.gz \
     && cd /tmp/openresty-${RESTY_VERSION}/bundle/nginx-${RESTY_NGINX} \
-    && export ${RESTY_LUAJIT_LIB} \
-    && export RESTY_LUAJIT_INC=$(ls -1 ../ |grep LuaJIT) \
-    && COMPILEOPTIONS=$(openresty -V 2>&1|grep -i "arguments"|cut -d ":" -f2-) \
+    && export LUAJIT_LIB="${RESTY_LUAJIT_LIB}" \
+    && export LUAJIT_INC=../$(ls -1 ../ |grep LuaJIT)/src \
+    && echo $LUAJIT_INC > /variables.txt \
+    && echo $LUAJIT_LIB >> /variables.txt\
+    && export COMPILEOPTIONS=$(openresty -V 2>&1|grep -i "arguments"|cut -d ":" -f2-) \
     && eval ./configure $COMPILEOPTIONS --add-dynamic-module=/tmp/modsecurity-nginx \
-    && make -j${RESTY_J} modules \
-    && mkdir /usr/local/openresty/nginx/modules \
+    && make -j${RESTY_J} modules
+RUN mkdir /usr/local/openresty/nginx/modules \
     && mkdir /usr/local/openresty/nginx/conf/sites-available \
     && mkdir /usr/local/openresty/nginx/conf/sites-enabled \
-    && cp objs/ngx_http_modsecurity_module.so /usr/local/openresty/nginx/modules/ \
+    && cp /tmp/openresty-${RESTY_VERSION}/bundle/nginx-${RESTY_NGINX}/objs/ngx_http_modsecurity_module.so /usr/local/openresty/nginx/modules/ \
     && cd /tmp \
     && if [ -n "${RESTY_EVAL_POST_MAKE}" ]; then eval $(echo ${RESTY_EVAL_POST_MAKE}); fi \
     && rm -rf \
@@ -148,7 +151,7 @@ COPY docker-entrypoint.sh /
 
 RUN apk add moreutils \
         gettext libintl
-RUN ln -s /usr/local/openresty/nginx/conf/sites-available/default.conf /usr/local/openresty/nginx/conf/sites-enabled/default.conf
+#RUN ln -s /usr/local/openresty/nginx/conf/sites-available/default.conf /usr/local/openresty/nginx/conf/sites-enabled/default.conf
 RUN chmod +x /docker-entrypoint.sh
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
