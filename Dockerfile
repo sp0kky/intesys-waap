@@ -142,12 +142,12 @@ RUN mkdir /usr/local/openresty/nginx/modules \
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
 # Copy nginx configuration files
-COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
-COPY logging.conf /usr/local/openresty/nginx/conf/logging.conf
-COPY modsecurity.conf /usr/local/openresty/nginx/conf/modsecurity.conf
-COPY crs-setup.conf /usr/local/openresty/nginx/conf/crs/crs-setup.conf
-COPY nginx.vh.default.conf /usr/local/openresty/nginx/conf/sites-available/default.conf
-COPY docker-entrypoint.sh /
+COPY config.d/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
+COPY config.d/logging.conf /usr/local/openresty/nginx/conf/logging.conf
+COPY config.d/modsecurity.conf /usr/local/openresty/nginx/conf/modsecurity.conf
+COPY config.d/crs-setup.conf /usr/local/openresty/nginx/conf/crs/crs-setup.conf
+COPY config.d/nginx.vh.default.conf /usr/local/openresty/nginx/conf/sites-available/default.conf
+COPY config.d/docker-entrypoint.sh /
 
 RUN apk add moreutils \
         gettext libintl
