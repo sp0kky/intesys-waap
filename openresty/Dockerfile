@@ -80,11 +80,13 @@ RUN apk add --no-cache --virtual .build-deps \
         openssl-dev \
         pcre-dev \
         ccache \
+        yajl-dev \
         ${RESTY_ADD_PACKAGE_BUILDDEPS} \
     && apk add --no-cache \
         gd \
         geoip \
         libgcc \
+        libstdc++ \
         git \
         libtool \
         automake \
@@ -93,6 +95,8 @@ RUN apk add --no-cache --virtual .build-deps \
         zlib \
         pcre \
         openssl \
+        curl \
+        yajl \
         ${RESTY_ADD_PACKAGE_RUNDEPS}
 RUN git clone https://github.com/SpiderLabs/ModSecurity /tmp/modsecurity \
     && cd /tmp/modsecurity \
@@ -110,7 +114,7 @@ RUN cd /tmp \
     && wget 'http://openresty.org/package/admin@openresty.com-5ea678a6.rsa.pub' \
     && mv 'admin@openresty.com-5ea678a6.rsa.pub' /etc/apk/keys/ \
     && echo "http://openresty.org/package/alpine/v$RESTY_IMAGE_TAG/main" | tee -a /etc/apk/repositories \
-    && apk update \ 
+    && apk update \
     && apk add openresty=${RESTY_VERSION}-r0
 RUN cd /tmp \
     && curl -fkSL https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
@@ -126,6 +130,7 @@ RUN cd /tmp \
 RUN mkdir /usr/local/openresty/nginx/modules \
     && mkdir /usr/local/openresty/nginx/conf/sites-available \
     && mkdir /usr/local/openresty/nginx/conf/sites-enabled \
+    && mkdir -p /var/log/modsecurity/audit/ \
     && cp /tmp/openresty-${RESTY_VERSION}/bundle/nginx-${RESTY_NGINX}/objs/ngx_http_modsecurity_module.so /usr/local/openresty/nginx/modules/ \
     && cd /tmp \
     && if [ -n "${RESTY_EVAL_POST_MAKE}" ]; then eval $(echo ${RESTY_EVAL_POST_MAKE}); fi \
@@ -136,7 +141,9 @@ RUN mkdir /usr/local/openresty/nginx/modules \
     && ln -sf /dev/stdout /usr/local/openresty/nginx/logs/access.log \
     && ln -sf /dev/stderr /usr/local/openresty/nginx/logs/error.log \
     && wget --quiet https://raw.githubusercontent.com/SpiderLabs/ModSecurity/v3/master/unicode.mapping -O /usr/local/openresty/nginx/conf/unicode.mapping \
-    && git clone https://github.com/coreruleset/coreruleset.git /usr/local/openresty/nginx/conf/crs 
+    && git clone https://github.com/coreruleset/coreruleset.git /usr/local/openresty/nginx/conf/crs
+RUN mkdir /usr/local/openresty/nginx/lua_scripts \
+    && git clone https://github.com/C0nw0nk/Nginx-Lua-Anti-DDoS.git /usr/local/openresty/nginx/lua_scripts/anti-ddos
 
 # Add additional binaries into PATH for convenience
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
@@ -147,11 +154,11 @@ COPY config.d/logging.conf /usr/local/openresty/nginx/conf/logging.conf
 COPY config.d/modsecurity.conf /usr/local/openresty/nginx/conf/modsecurity.conf
 COPY config.d/crs-setup.conf /usr/local/openresty/nginx/conf/crs/crs-setup.conf
 COPY config.d/nginx.vh.default.conf /usr/local/openresty/nginx/conf/sites-available/default.conf
-COPY config.d/docker-entrypoint.sh /
+COPY docker-entrypoint.sh /
 
 RUN apk add moreutils \
         gettext libintl
-#RUN ln -s /usr/local/openresty/nginx/conf/sites-available/default.conf /usr/local/openresty/nginx/conf/sites-enabled/default.conf
+RUN ln -s /usr/local/openresty/nginx/conf/sites-available/default.conf /usr/local/openresty/nginx/conf/sites-enabled/default.conf
 RUN chmod +x /docker-entrypoint.sh
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
